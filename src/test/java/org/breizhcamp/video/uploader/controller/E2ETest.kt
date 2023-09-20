@@ -34,12 +34,13 @@ class E2ETest {
             val authBtn = page.locator("#yt-auth")
             authBtn.click()
 
-            assertThat(page.locator("#yt-auth")).not().isVisible()
-
             ytServer.verifyRequest(
                 path = "/oauth2/v4/token",
                 method = HttpMethod.POST,
             )
+
+            assertThat(page.locator("#yt-auth")).not().isVisible()
+
         }
     }
 }
