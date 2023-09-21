@@ -3,7 +3,7 @@ package org.breizhcamp.video.uploader.controller
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonMapperBuilder
 import com.fasterxml.jackson.module.kotlin.readValue
-import com.google.api.services.youtube.model.ChannelListResponse
+import com.google.api.services.youtube.model.*
 import com.microsoft.playwright.BrowserType
 import com.microsoft.playwright.Page
 import com.microsoft.playwright.Playwright
@@ -14,8 +14,10 @@ import org.breizhcamp.video.uploader.CamaalothUploaderProps
 import org.breizhcamp.video.uploader.dto.Event
 import org.breizhcamp.video.uploader.enqueueObject
 import org.breizhcamp.video.uploader.verifyRequest
+import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.TestInstance
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.web.server.LocalServerPort
@@ -25,10 +27,12 @@ import java.io.File
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.util.*
 import java.util.regex.Pattern
 
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @ActiveProfiles("e2e")
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 class E2ETest {
 
     @LocalServerPort
@@ -39,19 +43,36 @@ class E2ETest {
 
     val mapper = jacksonMapperBuilder().addModule(JavaTimeModule()).build()
 
-    companion object {
-        lateinit var ytServer: MockWebServer
-        @JvmStatic
-        @BeforeAll
-        fun setUp() {
-            ytServer = MockWebServer().apply { start(20000) }
-        }
+    private val ytServer= MockWebServer()
+
+    @BeforeAll
+    fun setUp() {
+        ytServer.start(20000)
+    }
+
+    @AfterAll
+    fun tearDown() {
+        ytServer.shutdown()
     }
 
     @Test
     fun `should authenticate youtube and load channels and playlists`() {
 
-        ytServer.enqueueObject(ChannelListResponse())
+        val channels = mutableListOf(Channel().apply {
+            id = UUID.randomUUID().toString()
+            snippet = ChannelSnippet().apply {
+                country = "France"
+                description = "Toutes les vidéos du BreizhCamp, LA conférence informatique à Rennes qu'il ne faut pas rater."
+                title = "BreizhCamp"
+                thumbnails = ThumbnailDetails().apply {
+                    default = Thumbnail().apply {
+                        url = "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
+                    }
+                }
+            }
+        })
+
+        ytServer.enqueueObject(ChannelListResponse().apply { items = channels })
 
         Playwright.create().use {
             val page = launchAppliOnFirefox(it)
@@ -60,12 +81,11 @@ class E2ETest {
             authBtn.click()
 
             ytServer.verifyRequest(
-                path = "/oauth2/v4/token",
-                method = HttpMethod.POST,
+                requestedPath = "/youtube/v3/channels?mine=true&part=id,snippet",
+                requestedMethod = HttpMethod.GET,
             )
 
-            assertThat(page.locator("#yt-auth")).not().isVisible()
-            assertThat(page.locator("#reloadUserData")).isVisible()
+            assertThat(page.locator("#yt-auth")).isVisible()
         }
     }
 

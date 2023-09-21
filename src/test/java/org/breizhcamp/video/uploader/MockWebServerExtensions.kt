@@ -22,11 +22,11 @@ fun MockWebServer.enqueueObject(obj: Any, status: HttpStatus = HttpStatus.OK) {
 }
 
 fun MockWebServer.verifyRequest(
-    path: String,
-    method: HttpMethod,
+    requestedPath: String,
+    requestedMethod: HttpMethod,
 ){
     takeRequest(1, TimeUnit.SECONDS).apply {
-        assertThat(path).isEqualTo(path)
-        assertThat(method).isEqualTo(method)
+        assertThat(this.path).isEqualTo(requestedPath)
+        assertThat(method).isEqualTo(requestedMethod.name)
     }
 }
