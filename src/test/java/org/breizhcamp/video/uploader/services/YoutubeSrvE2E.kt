@@ -29,10 +29,6 @@ class YoutubeSrvE2E: YoutubeSrv() {
     override fun saveToken(token: GoogleTokenResponse?) {
     }
 
-    override fun getPlaylists(channelId: String?): MutableList<Playlist> {
-        return mutableListOf()
-    }
-
     override fun upload(videoInfo: VideoInfo?) {
     }
 

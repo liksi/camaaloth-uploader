@@ -72,7 +72,16 @@ class E2ETest {
             }
         })
 
+        val playlistItems = mutableListOf(Playlist().apply {
+            snippet = PlaylistSnippet().apply {
+                title = "test playlist snippet"
+                id = "1"
+                description = "test playlist description"
+            }
+        })
+
         ytServer.enqueueObject(ChannelListResponse().apply { items = channels })
+        ytServer.enqueueObject(PlaylistListResponse().apply { items = playlistItems })
 
         Playwright.create().use {
             val page = launchAppliOnFirefox(it)
@@ -149,9 +158,7 @@ class E2ETest {
     private fun saveAndInitScheduleFileForTest(scheduleFile: File, savedScheduleFile: File) {
         FileUtils.copyFile(scheduleFile, savedScheduleFile);
         val events = mapper.readValue<List<Event>>(scheduleFile).toMutableList()
-        val eventToFix = Event()
-        eventToFix.name = "Test"
-        events.add(eventToFix)
+        events.add(Event().apply { name = "Test"  })
         mapper.writeValue(scheduleFile, events)
     }
 
