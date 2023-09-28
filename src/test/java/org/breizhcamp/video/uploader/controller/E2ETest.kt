@@ -44,7 +44,7 @@ class E2ETest {
     @Autowired
     lateinit var props: CamaalothUploaderProps
 
-    val mapper = jacksonMapperBuilder().addModule(JavaTimeModule()).build()
+    private val mapper = jacksonMapperBuilder().addModule(JavaTimeModule()).build()
 
     private val ytServer = MockWebServer()
 
