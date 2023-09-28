@@ -8,7 +8,6 @@ import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonMapperBuilder
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.google.api.services.youtube.model.*
-import com.microsoft.playwright.Page
 import com.microsoft.playwright.Playwright
 import com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat
 import okhttp3.mockwebserver.MockWebServer
@@ -43,7 +42,7 @@ class E2ETest {
     lateinit var port: String
 
     @Autowired
-    lateinit var props: CamaalothUploaderProps;
+    lateinit var props: CamaalothUploaderProps
 
     val mapper = jacksonMapperBuilder().addModule(JavaTimeModule()).build()
 
@@ -93,7 +92,7 @@ class E2ETest {
         Playwright.create().use {
             with(it.launchAndNavigateToHomePage(port)) {
 
-                launchCreateDir(this)
+                this.locator("#createDir").click()
                 createVideoToUpload()
 
                 locator("#yt-auth").click()
@@ -117,7 +116,7 @@ class E2ETest {
         clearVideosDir()
         Playwright.create().use {
             with(it.launchAndNavigateToHomePage(port)) {
-                launchCreateDir(this)
+                this.locator("#createDir").click()
                 assertThat(locator("#createDir")).not().isVisible()
                 assertThat(locator("#reCreateDir")).isVisible()
                 assert(checkAllFolderHaveBeenCreated(videosDir, scheduleFile))
@@ -135,8 +134,7 @@ class E2ETest {
 
         Playwright.create().use {
             with(it.launchAndNavigateToHomePage(port)) {
-                val fixMissingIdsBtn = locator("#fixMissingIds")
-                fixMissingIdsBtn.click()
+                locator("#fixMissingIds").click()
 
                 assertThat(locator("#fixMissingIds")).isVisible()
                 assertThat(
@@ -158,13 +156,8 @@ class E2ETest {
         FileUtils.deleteDirectory(videosDir.toFile())
     }
 
-    private fun launchCreateDir(page: Page) {
-        val createDirBtn = page.locator("#createDir")
-        createDirBtn.click()
-    }
-
     private fun createVideoToUpload() {
-        Paths.get(props.recordingDir).toAbsolutePath().toFile().listFiles()?.first() {
+        Paths.get(props.recordingDir).toAbsolutePath().toFile().listFiles()?.first {
             File(it.absolutePath + File.separator + "1.mp4").createNewFile()
         }
     }
@@ -179,14 +172,14 @@ class E2ETest {
     }
 
     private fun saveAndInitScheduleFileForTest(scheduleFile: File, savedScheduleFile: File) {
-        FileUtils.copyFile(scheduleFile, savedScheduleFile);
+        FileUtils.copyFile(scheduleFile, savedScheduleFile)
         val events = mapper.readValue<List<Event>>(scheduleFile).toMutableList()
         events.add(Event().apply { name = "Test" })
         mapper.writeValue(scheduleFile, events)
     }
 
     private fun resetScheduleFile(savedScheduleFile: File, scheduleFile: File) {
-        FileUtils.copyFile(savedScheduleFile, scheduleFile);
-        FileUtils.forceDelete(savedScheduleFile);
+        FileUtils.copyFile(savedScheduleFile, scheduleFile)
+        FileUtils.forceDelete(savedScheduleFile)
     }
 }
