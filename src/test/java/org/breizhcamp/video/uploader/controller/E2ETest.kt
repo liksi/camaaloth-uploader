@@ -56,7 +56,7 @@ class E2ETest {
     }
 
     @Test
-    fun `should authenticate youtube and load channels and playlists`() {
+    fun `should authenticate youtube, load channels+playlists and show 1 video to upload`() {
 
         val channels = mutableListOf(Channel().apply {
             id = UUID.randomUUID().toString()
@@ -83,9 +83,13 @@ class E2ETest {
         ytServer.enqueueObject(ChannelListResponse().apply { items = channels })
         ytServer.enqueueObject(PlaylistListResponse().apply { items = playlistItems })
 
+        clearVideosDir()
+
         Playwright.create().use {
             val page = launchAppliOnFirefox(it)
 
+            launchCreateDir(page)
+            createVideoToUpload()
             val authBtn = page.locator("#yt-auth")
             authBtn.click()
 
@@ -95,21 +99,22 @@ class E2ETest {
             )
 
             assertThat(page.locator("#yt-auth")).isVisible()
+
+            val btnUploadFirstVideo = page.locator(".btn-upload-video")
+            assertThat(btnUploadFirstVideo).isVisible()
         }
     }
 
     @Test
     fun `should create sessions directory`(){
 
-        var videosDir = Paths.get(props.recordingDir).toAbsolutePath()
-        var scheduleFile: File = Paths.get(props.assetsDir, "schedule.json").toFile()
-
-        FileUtils.deleteDirectory(videosDir.toFile())
+        val videosDir = Paths.get(props.recordingDir).toAbsolutePath()
+        val scheduleFile: File = Paths.get(props.assetsDir, "schedule.json").toFile()
+        clearVideosDir()
         Playwright.create().use {
             val page = launchAppliOnFirefox(it)
 
-            val createDirBtn = page.locator("#createDir")
-            createDirBtn.click()
+            launchCreateDir(page)
 
             assertThat(page.locator("#createDir")).not().isVisible()
             assertThat(page.locator("#reCreateDir")).isVisible()
@@ -145,6 +150,22 @@ class E2ETest {
         val page = browser.newPage()
         page.navigate("http://localhost:$port")
         return page
+    }
+
+    private fun clearVideosDir(){
+        val videosDir = Paths.get(props.recordingDir).toAbsolutePath()
+        FileUtils.deleteDirectory(videosDir.toFile())
+    }
+
+    private fun launchCreateDir(page: Page) {
+        val createDirBtn = page.locator("#createDir")
+        createDirBtn.click()
+    }
+
+    private fun createVideoToUpload(){
+        Paths.get(props.recordingDir).toAbsolutePath().toFile().listFiles()?.first(){
+            File(it.absolutePath+File.separator+"1.mp4").createNewFile()
+        }
     }
 
     private fun checkAllFolderHaveBeenCreated(videosDir: Path, scheduleFile: File): Boolean {
