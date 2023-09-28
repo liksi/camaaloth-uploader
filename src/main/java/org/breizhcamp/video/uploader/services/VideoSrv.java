@@ -21,7 +21,6 @@ import static java.util.stream.Collectors.toList;
 import static java.util.stream.Collectors.toMap;
 import static org.breizhcamp.video.uploader.dto.VideoInfo.Status.DONE;
 import static org.breizhcamp.video.uploader.dto.VideoInfo.Status.NOT_STARTED;
-
 @Service
 public class VideoSrv {
 
@@ -34,20 +33,15 @@ public class VideoSrv {
 	@Autowired
 	private ObjectMapper objectMapper;
 
+	@Autowired
+	private  VideoProxySrv videoProxySrv;
+
 	/**
 	 * List all videos found in video directory
 	 * @return VideoInfo found and status
 	 */
 	public List<VideoInfo> list() throws IOException {
-		Path dir = fileSrv.getRecordingDir();
-
-		try (Stream<Path> list = Files.list(dir)) {
-			return list.filter(Files::isDirectory)
-					.map(this::readDir)
-					.filter(Objects::nonNull)
-					.sorted(comparing(VideoInfo::getDirName))
-					.collect(toList());
-		}
+		return videoProxySrv.list();
 	}
 
 	public void generateUpdatedSchedule() throws IOException {

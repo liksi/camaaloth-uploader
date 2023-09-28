@@ -24,6 +24,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("org.jetbrains.kotlin:kotlin-stdlib-jdk8")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
+    implementation("io.github.microutils:kotlin-logging-jvm:2.1.23")
 
     implementation("org.apache.commons:commons-lang3")
     implementation("commons-io:commons-io:2.6")
