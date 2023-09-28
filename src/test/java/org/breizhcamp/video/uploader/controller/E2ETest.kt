@@ -1,10 +1,13 @@
 package org.breizhcamp.video.uploader.controller
 
+import assertk.assertThat
+import assertk.assertions.doesNotContain
+import assertk.assertions.extracting
+import assertk.assertions.isNotNull
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule
 import com.fasterxml.jackson.module.kotlin.jacksonMapperBuilder
 import com.fasterxml.jackson.module.kotlin.readValue
 import com.google.api.services.youtube.model.*
-import com.microsoft.playwright.BrowserType
 import com.microsoft.playwright.Page
 import com.microsoft.playwright.Playwright
 import com.microsoft.playwright.assertions.PlaywrightAssertions.assertThat
@@ -13,6 +16,7 @@ import org.apache.commons.io.FileUtils
 import org.breizhcamp.video.uploader.CamaalothUploaderProps
 import org.breizhcamp.video.uploader.dto.Event
 import org.breizhcamp.video.uploader.enqueueObject
+import org.breizhcamp.video.uploader.launchAndNavigateToHomePage
 import org.breizhcamp.video.uploader.verifyRequest
 import org.junit.jupiter.api.AfterAll
 import org.junit.jupiter.api.BeforeAll
@@ -43,7 +47,7 @@ class E2ETest {
 
     val mapper = jacksonMapperBuilder().addModule(JavaTimeModule()).build()
 
-    private val ytServer= MockWebServer()
+    private val ytServer = MockWebServer()
 
     @BeforeAll
     fun setUp() {
@@ -62,7 +66,8 @@ class E2ETest {
             id = UUID.randomUUID().toString()
             snippet = ChannelSnippet().apply {
                 country = "France"
-                description = "Toutes les vidéos du BreizhCamp, LA conférence informatique à Rennes qu'il ne faut pas rater."
+                description =
+                    "Toutes les vidéos du BreizhCamp, LA conférence informatique à Rennes qu'il ne faut pas rater."
                 title = "BreizhCamp"
                 thumbnails = ThumbnailDetails().apply {
                     default = Thumbnail().apply {
@@ -86,73 +91,69 @@ class E2ETest {
         clearVideosDir()
 
         Playwright.create().use {
-            val page = launchAppliOnFirefox(it)
+            with(it.launchAndNavigateToHomePage(port)) {
 
-            launchCreateDir(page)
-            createVideoToUpload()
-            val authBtn = page.locator("#yt-auth")
-            authBtn.click()
+                launchCreateDir(this)
+                createVideoToUpload()
 
-            ytServer.verifyRequest(
-                requestedPath = "/youtube/v3/channels?mine=true&part=id,snippet",
-                requestedMethod = HttpMethod.GET,
-            )
+                locator("#yt-auth").click()
 
-            assertThat(page.locator("#yt-auth")).isVisible()
+                ytServer.verifyRequest(
+                    requestedPath = "/youtube/v3/channels?mine=true&part=id,snippet",
+                    requestedMethod = HttpMethod.GET,
+                )
 
-            val btnUploadFirstVideo = page.locator(".btn-upload-video")
-            assertThat(btnUploadFirstVideo).isVisible()
+                assertThat(locator("#yt-auth")).isVisible()
+                assertThat(locator(".btn-upload-video")).isVisible()
+            }
         }
     }
 
     @Test
-    fun `should create sessions directory`(){
+    fun `should create sessions directory`() {
 
         val videosDir = Paths.get(props.recordingDir).toAbsolutePath()
         val scheduleFile: File = Paths.get(props.assetsDir, "schedule.json").toFile()
         clearVideosDir()
         Playwright.create().use {
-            val page = launchAppliOnFirefox(it)
-
-            launchCreateDir(page)
-
-            assertThat(page.locator("#createDir")).not().isVisible()
-            assertThat(page.locator("#reCreateDir")).isVisible()
-            assert(checkAllFolderHaveBeenCreated(videosDir, scheduleFile))
+            with(it.launchAndNavigateToHomePage(port)) {
+                launchCreateDir(this)
+                assertThat(locator("#createDir")).not().isVisible()
+                assertThat(locator("#reCreateDir")).isVisible()
+                assert(checkAllFolderHaveBeenCreated(videosDir, scheduleFile))
+            }
         }
     }
 
     @Test
-    fun `should fix ids on schedule`(){
+    fun `should fix ids on schedule`() {
 
-        var scheduleFile: File = Paths.get(props.assetsDir, "schedule.json").toFile()
-        var savedScheduleFile: File = Paths.get(props.assetsDir, "schedule_save.json").toFile()
+        val scheduleFile: File = Paths.get(props.assetsDir, "schedule.json").toFile()
+        val savedScheduleFile: File = Paths.get(props.assetsDir, "schedule_save.json").toFile()
 
         saveAndInitScheduleFileForTest(scheduleFile, savedScheduleFile)
 
         Playwright.create().use {
-            val page = launchAppliOnFirefox(it)
+            with(it.launchAndNavigateToHomePage(port)) {
+                val fixMissingIdsBtn = locator("#fixMissingIds")
+                fixMissingIdsBtn.click()
 
-            val fixMissingIdsBtn = page.locator("#fixMissingIds")
-            fixMissingIdsBtn.click()
+                assertThat(locator("#fixMissingIds")).isVisible()
+                assertThat(
+                    mapper.readValue<List<Event>>(scheduleFile)
+                        .first { it.name == "Test" }.id
+                ).isNotNull()
+                assertThat(mapper.readValue<List<Event>>(scheduleFile))
+                    .extracting { it.id }
+                    .doesNotContain(null)
 
-            assertThat(page.locator("#fixMissingIds")).isVisible()
-            assert(mapper.readValue<List<Event>>(scheduleFile).filter { it.name == "Test" }.first().id != null)
-            assert(mapper.readValue<List<Event>>(scheduleFile).all {it.id != null})
-
-            resetScheduleFile(savedScheduleFile, scheduleFile)
+                resetScheduleFile(savedScheduleFile, scheduleFile)
+            }
         }
     }
 
 
-    private fun launchAppliOnFirefox(it: Playwright): Page {
-        val browser = it.firefox().launch(BrowserType.LaunchOptions().setHeadless(false).setSlowMo(1000.0))
-        val page = browser.newPage()
-        page.navigate("http://localhost:$port")
-        return page
-    }
-
-    private fun clearVideosDir(){
+    private fun clearVideosDir() {
         val videosDir = Paths.get(props.recordingDir).toAbsolutePath()
         FileUtils.deleteDirectory(videosDir.toFile())
     }
@@ -162,24 +163,25 @@ class E2ETest {
         createDirBtn.click()
     }
 
-    private fun createVideoToUpload(){
-        Paths.get(props.recordingDir).toAbsolutePath().toFile().listFiles()?.first(){
-            File(it.absolutePath+File.separator+"1.mp4").createNewFile()
+    private fun createVideoToUpload() {
+        Paths.get(props.recordingDir).toAbsolutePath().toFile().listFiles()?.first() {
+            File(it.absolutePath + File.separator + "1.mp4").createNewFile()
         }
     }
 
     private fun checkAllFolderHaveBeenCreated(videosDir: Path, scheduleFile: File): Boolean {
         val events = mapper.readValue<List<Event>>(scheduleFile)
         return Files.exists(videosDir.toAbsolutePath()) && events.all { currentEvent ->
-            return videosDir.toFile().listFiles()?.any{
-                Pattern.matches(".+" + currentEvent.name + ".+", Pattern.quote(it.absolutePath)) } ?: false
+            return videosDir.toFile().listFiles()?.any {
+                Pattern.matches(".+" + currentEvent.name + ".+", Pattern.quote(it.absolutePath))
+            } ?: false
         }
     }
 
     private fun saveAndInitScheduleFileForTest(scheduleFile: File, savedScheduleFile: File) {
         FileUtils.copyFile(scheduleFile, savedScheduleFile);
         val events = mapper.readValue<List<Event>>(scheduleFile).toMutableList()
-        events.add(Event().apply { name = "Test"  })
+        events.add(Event().apply { name = "Test" })
         mapper.writeValue(scheduleFile, events)
     }
 
