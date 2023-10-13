@@ -45,18 +45,7 @@ public class VideoSrv {
 	}
 
 	public void generateUpdatedSchedule() throws IOException {
-		List<Event> events = eventSrv.read();
-		Map<String, String> completedUploadsUrls = list().stream()
-				.filter(v -> v.getStatus().equals(DONE))
-				.collect(toMap(VideoInfo::getEventId, VideoInfo::getYoutubeId));
-		List<Event> updatedEvents = events.stream()
-				.map(event -> {
-					if (completedUploadsUrls.containsKey(String.valueOf(event.getId()))) {
-						event.setVideoUrl("https://www.youtube.com/watch?v=" + completedUploadsUrls.get(String.valueOf(event.getId())));
-					}
-					return event;
-				}).sorted(Comparator.comparing(Event::getId)).collect(toList());
-		objectMapper.writeValue(fileSrv.getRecordingDir().resolve("schedule.json").toFile(), updatedEvents);
+		videoProxySrv.generateUpdatedSchedule();
 	}
 
 	/**
@@ -65,39 +54,7 @@ public class VideoSrv {
 	 * @return VideoInfo object filled or null if directory does not contains video file
 	 */
 	public VideoInfo readDir(Path dir) {
-		//retrieving first video file
-		try {
-			Path videoFile = getFirstFileFromExt(dir, "mp4");
-			if (videoFile == null) return null;
-
-			Path thumbnail = dir.resolve("thumb.png");
-
-			VideoInfo videoInfo = new VideoInfo();
-			videoInfo.setPath(videoFile);
-			videoInfo.setStatus(NOT_STARTED);
-			if (thumbnail.toFile().exists()) {
-				videoInfo.setThumbnail(thumbnail);
-			}
-			videoInfo.setEventId(fileSrv.getIdFromPath(dir.getFileName().toString()));
-
-			Path statusFile = dir.resolve("metadata.json");
-			if (Files.exists(statusFile)) {
-				try {
-					VideoMetadata metadata = objectMapper.readValue(statusFile.toFile(), VideoMetadata.class);
-					videoInfo.setStatus(metadata.getStatus());
-					videoInfo.setProgression(metadata.getProgression());
-					videoInfo.setYoutubeId(metadata.getYoutubeId());
-				} catch (IOException e) {
-					logger.error("Unable to read metadata in {}", statusFile);
-					throw e;
-				}
-			}
-
-			return videoInfo;
-
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
-		}
+		return videoProxySrv.readDir(dir);
 	}
 
 	/**
@@ -105,33 +62,7 @@ public class VideoSrv {
 	 * @param video Video to update
 	 */
 	public void updateVideo(VideoInfo video) throws IOException {
-		VideoMetadata metadata = new VideoMetadata();
-		metadata.setStatus(video.getStatus());
-		metadata.setProgression(video.getProgression());
-		metadata.setYoutubeId(video.getYoutubeId());
-
-		Path statusFile = video.getPath().getParent().resolve("metadata.json");
-		objectMapper.writeValue(statusFile.toFile(), metadata);
-	}
-
-	/**
-	 * List a directory to retrieve the first file with the specified extension
-	 * @param dir Directory to read
-	 * @param ext Extension to find
-	 * @return First file found or null if any file with specified extension exists within the directory
-	 */
-	private Path getFirstFileFromExt(Path dir, String... ext) {
-		List<String> suffixes = Arrays.stream(ext).map(e -> "." + e).collect(toList());
-
-		try (Stream<Path> list = Files.list(dir)) {
-			return list
-					.filter(f -> suffixes.stream().anyMatch((suffix) -> f.toString().toLowerCase().endsWith(suffix)))
-					.findFirst()
-					.orElse(null);
-
-		} catch (IOException e) {
-			throw new UncheckedIOException(e);
-		}
+		videoProxySrv.updateVideo(video);
 	}
 
 	private static final Logger logger = LoggerFactory.getLogger(VideoSrv.class);

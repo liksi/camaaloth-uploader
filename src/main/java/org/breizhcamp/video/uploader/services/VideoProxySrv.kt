@@ -14,7 +14,7 @@ import kotlin.streams.asSequence
 private val logger = KotlinLogging.logger {}
 
 @Service
-class VideoProxySrv(private val fileSrv: FileSrv, private val objectMapper: ObjectMapper) {
+class VideoProxySrv(private val fileSrv: FileSrv, private val objectMapper: ObjectMapper,  private val eventSrv: EventSrv) {
 
     fun list(): List<VideoInfo> = if (!Files.isDirectory(fileSrv.recordingDir)) emptyList() else
         Files.list(fileSrv.recordingDir).asSequence()
@@ -22,6 +22,22 @@ class VideoProxySrv(private val fileSrv: FileSrv, private val objectMapper: Obje
             .mapNotNull { readDir(it) }
             .sortedBy { it.dirName }
             .toList()
+
+    fun generateUpdatedSchedule() {
+        val completedUploadsUrls = list()
+            .filter { it.status == VideoInfo.Status.DONE }
+            .associate { it.eventId to it.youtubeId }
+
+        val updatedEvents = eventSrv.read()
+            .onEach { event ->
+                completedUploadsUrls[event.id]?.let {
+                    event.videoUrl = "https://www.youtube.com/watch?v=$it"
+                }
+            }
+            .sortedBy { it.id }
+
+        objectMapper.writeValue(fileSrv.recordingDir.resolve("schedule.json").toFile(), updatedEvents)
+    }
 
     fun readDir(dir: Path): VideoInfo? {
         //retrieving first video file
@@ -50,6 +66,26 @@ class VideoProxySrv(private val fileSrv: FileSrv, private val objectMapper: Obje
         return videoInfo
     }
 
+    fun updateVideo(video: VideoInfo) {
+        val statusFile = requireNotNull(video.path) { "Cannot update metadata of [${video.dirName}] because no path defined" }
+
+        val metadata = VideoMetadata(
+            status = video.status,
+            progression = video.progression,
+            youtubeId = video.youtubeId
+        )
+
+        statusFile.parent.resolve("metadata.json").let {
+            objectMapper.writeValue(it.toFile(), metadata)
+        }
+    }
+
+    /**
+     * List a directory to retrieve the first file with the specified extension
+     * @param dir Directory to read
+     * @param ext Extension to find
+     * @return First file found or null if any file with specified extension exists within the directory
+     */
     private fun getFirstFileFromExt(dir: Path, vararg ext: String): Path? {
         if (!Files.isDirectory(dir)) return null
 
