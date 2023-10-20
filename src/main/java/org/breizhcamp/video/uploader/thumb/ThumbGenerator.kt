@@ -5,6 +5,7 @@ import org.apache.commons.io.FileUtils
 import org.breizhcamp.video.uploader.CamaalothUploaderProps
 import org.breizhcamp.video.uploader.services.EventSrv
 import org.breizhcamp.video.uploader.services.FileSrv
+import org.breizhcamp.video.uploader.services.PathUtils
 import org.springframework.boot.CommandLineRunner
 import org.springframework.boot.WebApplicationType
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -30,7 +31,7 @@ class ThumbGeneratorSrv(private val eventSrv: EventSrv, private val fileSrv: Fil
                 var speakers = event.speakers!!.replace("[\\\\/:*?\"<>|]".toRegex(), "-")
                 if (speakers.endsWith(", ")) speakers = speakers.substring(0, speakers.length - 2)
 
-                val destDir = fileSrv.recordingDir.resolve(fileSrv.buildDirName(event))
+                val destDir = fileSrv.recordingDir.resolve(PathUtils.buildDirName(event))
                 makeThumb(svgThumb, event.name, speakers, destDir, "thumb.png")
             } else {
                 println("WARNING: speaker is null for ${event.id} ${event.name}")

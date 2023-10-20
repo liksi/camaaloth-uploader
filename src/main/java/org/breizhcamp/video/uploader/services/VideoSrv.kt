@@ -14,7 +14,7 @@ import kotlin.streams.asSequence
 private val logger = KotlinLogging.logger {}
 
 @Service
-class VideoProxySrv(private val fileSrv: FileSrv, private val objectMapper: ObjectMapper,  private val eventSrv: EventSrv) {
+class VideoSrv(private val fileSrv: FileSrv, private val objectMapper: ObjectMapper,  private val eventSrv: EventSrv) {
 
     fun list(): List<VideoInfo> = if (!Files.isDirectory(fileSrv.recordingDir)) emptyList() else
         Files.list(fileSrv.recordingDir).asSequence()
@@ -49,7 +49,7 @@ class VideoProxySrv(private val fileSrv: FileSrv, private val objectMapper: Obje
         if (thumbnail.toFile().exists()) {
             videoInfo.thumbnail = thumbnail
         }
-        videoInfo.eventId = fileSrv.getIdFromPath(dir.fileName.toString())
+        videoInfo.eventId = PathUtils.getIdFromPath(dir.fileName.toString())
 
         val statusFile = dir.resolve("metadata.json")
         if (Files.exists(statusFile)) {

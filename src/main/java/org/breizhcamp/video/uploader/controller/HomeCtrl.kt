@@ -26,7 +26,7 @@ class HomeCtrl(
     @GetMapping
     fun home(model: Model): String {
         val videosDir = fileSrv.recordingDir
-        val connected = youtubeSrv.isConnected
+        val connected = youtubeSrv.isConnected()
 
         model["videosDir"] = videosDir
         model["dirExists"] = Files.isDirectory(videosDir)

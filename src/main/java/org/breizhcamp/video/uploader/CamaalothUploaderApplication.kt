@@ -9,7 +9,12 @@ import org.springframework.context.annotation.FilterType
 
 @SpringBootApplication
 @EnableConfigurationProperties(CamaalothUploaderProps::class)
-@ComponentScan(excludeFilters = arrayOf(ComponentScan.Filter(value = [(ThumbGeneratorApplication::class)], type = FilterType.ASSIGNABLE_TYPE)))
+@ComponentScan(
+    excludeFilters = [ComponentScan.Filter(
+        value = [(ThumbGeneratorApplication::class)],
+        type = FilterType.ASSIGNABLE_TYPE
+    )]
+)
 class CamaalothUploaderApplication
 
 fun main(args: Array<String>) {
