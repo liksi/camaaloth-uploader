@@ -32,7 +32,7 @@ class YoutubeCtrl(
 
     @GetMapping("/auth")
     fun auth(@RequestParam baseUrl: String): String {
-        redirectUrl = baseUrl + "yt/return"
+        redirectUrl = "${baseUrl}yt/return"
         return "redirect:" + youtubeSrv.getAuthUrl(redirectUrl!!)
     }
 
@@ -63,10 +63,9 @@ class YoutubeCtrl(
         if ("none" == playlist) {
             ytSession.curPlaylist = null
         } else if (ytSession.playlists != null) {
-            ytSession.playlists!!
-                .first { it.id == playlist }.let {
-                    ytSession.curPlaylist = it
-                }
+            ytSession.playlists
+                ?.firstOrNull { it.id == playlist }
+                ?.run { ytSession.curPlaylist = this }
         }
         return "redirect:/"
     }
@@ -76,9 +75,9 @@ class YoutubeCtrl(
     fun uploadAll(): String {
         videoSrv.list()
             .filter { it.status === VideoInfo.Status.NOT_STARTED }
-            .forEach {
-                it.playlistId = ytSession.curPlaylist!!.id
-                youtubeSrv.upload(it)
+            .forEach { videoInfo ->
+                ytSession.curPlaylist?.let { videoInfo.playlistId = it.id }
+                youtubeSrv.upload(videoInfo)
             }
         return "redirect:/"
     }
@@ -106,7 +105,6 @@ class YoutubeCtrl(
                 }
                 youtubeSrv.upload(it)
             }
-
         }
     }
 

@@ -13,10 +13,7 @@ import org.springframework.beans.factory.annotation.Value
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import java.io.File
-import java.io.IOException
 import java.io.InputStreamReader
-import java.security.GeneralSecurityException
-import java.util.*
 
 /**
  * Configuration file for Youtube access
@@ -33,26 +30,26 @@ class YoutubeAuthConfig(
     }
 
     @Bean
-    @Throws(GeneralSecurityException::class, IOException::class)
     fun httpTransport(): HttpTransport {
         return GoogleNetHttpTransport.newTrustedTransport()
     }
 
     @Bean
-    @Throws(IOException::class, GeneralSecurityException::class)
-    fun ytAuthFlow(): GoogleAuthorizationCodeFlow {
-        val dataStoreFactory = FileDataStoreFactory(dataStoreDir)
+    fun ytAuthFlow(jacksonFactory: JacksonFactory, httpTransport: HttpTransport): GoogleAuthorizationCodeFlow {
         val secrets = GoogleClientSecrets.load(
-            jacksonFactory(),
-            InputStreamReader(YoutubeAuthConfig::class.java.getResourceAsStream("/oauth-google.json"))
+            jacksonFactory,
+            InputStreamReader(
+                YoutubeAuthConfig::class.java.getResourceAsStream("/oauth-google.json")
+                    ?: error("No oauth-google.json file")
+            )
         )
         return GoogleAuthorizationCodeFlow.Builder(
-            httpTransport(),
-            jacksonFactory(),
+            httpTransport,
+            jacksonFactory,
             secrets,
             listOf(YouTubeScopes.YOUTUBE_UPLOAD, YouTubeScopes.YOUTUBE)
         )
-            .setDataStoreFactory(dataStoreFactory)
+            .setDataStoreFactory(FileDataStoreFactory(dataStoreDir))
             .build()
     }
 
@@ -66,12 +63,11 @@ class YoutubeAuthConfig(
      * @return Valid credential or null
      */
     @Bean
-    @Throws(IOException::class)
     fun ytCredential(ytAuthFlow: GoogleAuthorizationCodeFlow): Credential? {
-        val credential = ytAuthFlow.loadCredential("user")
-        return if (credential?.getExpiresInSeconds() == null || credential.getExpiresInSeconds() < 10) {
-            null
-        } else credential
+        return ytAuthFlow.loadCredential(YT_USER_ID)
+            ?.takeIf {
+                it.expiresInSeconds != null && it.expiresInSeconds >= 10
+            }
     }
 
     companion object {
