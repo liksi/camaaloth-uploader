@@ -20,8 +20,7 @@ import java.io.InputStreamReader
  */
 @Configuration
 class YoutubeAuthConfig(
-    @Value("\${videos.dir:./videos}/.datastore")
-    private val dataStoreDir: File
+    @Value("\${videos.dir:./videos}/.datastore") private val dataStoreDir: File
 ) {
 
     @Bean
@@ -37,20 +36,14 @@ class YoutubeAuthConfig(
     @Bean
     fun ytAuthFlow(jacksonFactory: JacksonFactory, httpTransport: HttpTransport): GoogleAuthorizationCodeFlow {
         val secrets = GoogleClientSecrets.load(
-            jacksonFactory,
-            InputStreamReader(
+            jacksonFactory, InputStreamReader(
                 YoutubeAuthConfig::class.java.getResourceAsStream("/oauth-google.json")
                     ?: error("No oauth-google.json file")
             )
         )
         return GoogleAuthorizationCodeFlow.Builder(
-            httpTransport,
-            jacksonFactory,
-            secrets,
-            listOf(YouTubeScopes.YOUTUBE_UPLOAD, YouTubeScopes.YOUTUBE)
-        )
-            .setDataStoreFactory(FileDataStoreFactory(dataStoreDir))
-            .build()
+            httpTransport, jacksonFactory, secrets, listOf(YouTubeScopes.YOUTUBE_UPLOAD, YouTubeScopes.YOUTUBE)
+        ).setDataStoreFactory(FileDataStoreFactory(dataStoreDir)).build()
     }
 
     @Bean
@@ -63,11 +56,11 @@ class YoutubeAuthConfig(
      * @return Valid credential or null
      */
     @Bean
-    fun ytCredential(ytAuthFlow: GoogleAuthorizationCodeFlow): Credential? {
-        return ytAuthFlow.loadCredential(YT_USER_ID)
-            ?.takeIf {
+    fun ytCredential(ytAuthFlow: GoogleAuthorizationCodeFlow): Credential {
+        return checkNotNull(ytAuthFlow.loadCredential(YT_USER_ID)) { "No credential found for userId '$YT_USER_ID'" }
+            .takeIf {
                 it.expiresInSeconds != null && it.expiresInSeconds >= 10
-            }
+            } ?: error("Credential expired")
     }
 
     companion object {
