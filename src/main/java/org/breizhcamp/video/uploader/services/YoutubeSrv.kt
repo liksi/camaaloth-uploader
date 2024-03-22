@@ -7,6 +7,8 @@ import com.google.api.client.googleapis.media.MediaHttpUploader
 import com.google.api.client.http.FileContent
 import com.google.api.services.youtube.YouTube
 import com.google.api.services.youtube.model.*
+import jakarta.annotation.PostConstruct
+import jakarta.annotation.PreDestroy
 import org.breizhcamp.video.uploader.config.YoutubeAuthConfig
 import org.breizhcamp.video.uploader.controller.YoutubeCtrl
 import org.breizhcamp.video.uploader.dto.Event
@@ -22,8 +24,6 @@ import java.math.MathContext
 import java.security.GeneralSecurityException
 import java.util.concurrent.BlockingDeque
 import java.util.concurrent.LinkedBlockingDeque
-import javax.annotation.PostConstruct
-import javax.annotation.PreDestroy
 
 /**
  * Youtube access service

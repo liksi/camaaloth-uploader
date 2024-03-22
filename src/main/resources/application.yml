@@ -1,3 +1,14 @@
+
 spring.thymeleaf.cache: false
 spring.thymeleaf.mode: HTML
-spring.jackson.serialization.write_dates_as_timestamps: false
+
+spring:
+  application:
+    name: camaaloth-uploader
+  threads:
+    virtual:
+      enabled: true
+  jackson:
+    date-format:
+    serialization:
+      write-date-keys-as-timestamps: false

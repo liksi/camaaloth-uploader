@@ -25,8 +25,8 @@ fun MockWebServer.verifyRequest(
     requestedPath: String,
     requestedMethod: HttpMethod,
 ){
-    takeRequest(1, TimeUnit.SECONDS).apply {
-        assertThat(this.path).isEqualTo(requestedPath)
-        assertThat(method).isEqualTo(requestedMethod.name)
+    takeRequest(1, TimeUnit.SECONDS)!!.apply {
+        assertThat(path).isEqualTo(requestedPath)
+        assertThat(method).isEqualTo(requestedMethod.name())
     }
 }

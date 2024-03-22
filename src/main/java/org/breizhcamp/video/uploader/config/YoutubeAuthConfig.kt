@@ -4,6 +4,7 @@ import com.google.api.client.auth.oauth2.Credential
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
+import com.google.api.client.googleapis.testing.auth.oauth2.MockGoogleCredential
 import com.google.api.client.http.HttpTransport
 import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.client.util.store.FileDataStoreFactory
@@ -56,15 +57,17 @@ class YoutubeAuthConfig(
      * @return Valid credential or null
      */
     @Bean
-    fun ytCredential(ytAuthFlow: GoogleAuthorizationCodeFlow): Credential {
-        return checkNotNull(ytAuthFlow.loadCredential(YT_USER_ID)) { "No credential found for userId '$YT_USER_ID'" }
+    fun ytCredential(ytAuthFlow: GoogleAuthorizationCodeFlow): Credential? = runCatching {
+        checkNotNull(ytAuthFlow.loadCredential(YT_USER_ID)) { "No credential found for userId '$YT_USER_ID'" }
             .takeIf {
                 it.expiresInSeconds != null && it.expiresInSeconds >= 10
             } ?: error("Credential expired")
     }
+        .onFailure { println("Error loading credential: ${it.message}") }
+        .getOrDefault(MockGoogleCredential(MockGoogleCredential.Builder()))
 
     companion object {
         /** Id of the user for storing credential  */
-        const val YT_USER_ID = "user"
+        const val YT_USER_ID = "642242160510-fm7dpbbvt7doup56mj2agb2cfvbqvv3m.apps.googleusercontent.com"
     }
 }
