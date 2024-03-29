@@ -4,7 +4,6 @@ import com.google.api.client.auth.oauth2.Credential
 import com.google.api.client.googleapis.auth.oauth2.GoogleAuthorizationCodeFlow
 import com.google.api.client.googleapis.auth.oauth2.GoogleClientSecrets
 import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
-import com.google.api.client.googleapis.testing.auth.oauth2.MockGoogleCredential
 import com.google.api.client.http.HttpTransport
 import com.google.api.client.json.jackson2.JacksonFactory
 import com.google.api.client.util.store.FileDataStoreFactory
@@ -64,7 +63,7 @@ class YoutubeAuthConfig(
             } ?: error("Credential expired")
     }
         .onFailure { println("Error loading credential: ${it.message}") }
-        .getOrDefault(MockGoogleCredential(MockGoogleCredential.Builder()))
+        .getOrThrow()
 
     companion object {
         /** Id of the user for storing credential  */
